@@ -1,175 +1,207 @@
 <?php 
 error_reporting(E_ALL); 
 ini_set('display_errors', 1);
+
+echo '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">';
 include_once('../includes/header.php'); 
 
-// --- LOGIC: SAVE THE SCHEDULE ---
+$status_msg = "";
+
 if (isset($_POST['dispatch_schedule'])) {
-    $title      = mysqli_real_escape_string($conn, $_POST['title']);
-    $category   = mysqli_real_escape_string($conn, $_POST['category']);
-    $date       = $_POST['schedule_date'];
-    $mode       = $_POST['sync_mode']; // 'sync' or 'custom'
-    $platforms  = isset($_POST['platforms']) ? $_POST['platforms'] : [];
+    $title      = mysqli_real_escape_string($conn, $_POST['campaign_title']);
+    $duration   = mysqli_real_escape_string($conn, $_POST['schedule_duration']);
+    $mode       = isset($_POST['custom_mode']) ? 'custom' : 'sync';
+    $platforms  = $_POST['platforms'] ?? [];
+    $recipients = isset($_POST['recipients']) ? implode(", ", $_POST['recipients']) : "";
 
-    // 1. Insert into main 'schedules' table
-    $sql_main = "INSERT INTO schedules (title, start_date, mode, status) VALUES ('$title', '$date', '$mode', 'Pending')";
-    mysqli_query($conn, $sql_main);
-    $schedule_id = mysqli_insert_id($conn);
+    // DATE SPLITTING
+    $date_parts = explode(" to ", $duration);
+    $start_date = $date_parts[0];
+    $end_date   = (isset($date_parts[1])) ? $date_parts[1] : $date_parts[0];
 
-    // 2. Handle Content & Ad Logic
-    if ($mode == 'sync') {
-        // SYNC MODE: One set of details for all platforms
-        $format = $_POST['sync_format'];
-        $inst   = mysqli_real_escape_string($conn, $_POST['sync_instructions']);
-        
-        foreach ($platforms as $p) {
-            mysqli_query($conn, "INSERT INTO schedule_details (schedule_id, platform, format, instructions) 
-                                 VALUES ($schedule_id, '$p', '$format', '$inst')");
-        }
+    $sql_main = "INSERT INTO schedules (title, start_date, end_date, mode, status) 
+                 VALUES ('$title', '$start_date', '$end_date', '$mode', 'Pending')";
+    
+    if (mysqli_query($conn, $sql_main)) {
+        $schedule_id = mysqli_insert_id($conn);
 
-        // Handle File Uploads for Sync Group
-        if (!empty($_FILES['sync_ads']['name'][0])) {
-            foreach ($_FILES['sync_ads']['name'] as $key => $val) {
-                $file_name = time() . "_" . $val;
-                move_uploaded_file($_FILES['sync_ads']['tmp_name'][$key], "../uploads/" . $file_name);
-                mysqli_query($conn, "INSERT INTO assets (schedule_id, platform, file_name) VALUES ($schedule_id, 'global', '$file_name')");
+        if ($mode == 'sync') {
+            $format     = $_POST['sync_format'];
+            $qty        = $_POST['sync_qty'];
+            $inst       = mysqli_real_escape_string($conn, $_POST['sync_instructions']);
+
+            foreach ($platforms as $p) {
+                mysqli_query($conn, "INSERT INTO schedule_details (schedule_id, platform, format, ad_quantity, instructions) 
+                                     VALUES ($schedule_id, '$p', '$format', '$qty', '$inst')");
             }
-        }
-    } else {
-        // CUSTOM MODE: Different details for each platform
-        foreach ($platforms as $p) {
-            $format = $_POST["format_$p"];
-            $inst   = mysqli_real_escape_string($conn, $_POST["inst_$p"]);
-            mysqli_query($conn, "INSERT INTO schedule_details (schedule_id, platform, format, instructions) 
-                                 VALUES ($schedule_id, '$p', '$format', '$inst')");
             
-            // Handle File Uploads per platform
-            if (!empty($_FILES["ads_$p"]['name'][0])) {
-                foreach ($_FILES["ads_$p"]['name'] as $key => $val) {
-                    $file_name = time() . "_" . $p . "_" . $val;
-                    move_uploaded_file($_FILES["ads_$p"]['tmp_name'][$key], "../uploads/" . $file_name);
-                    mysqli_query($conn, "INSERT INTO assets (schedule_id, platform, file_name) VALUES ($schedule_id, '$p', '$file_name')");
+            if (!empty($_FILES['sync_ads']['name'][0])) {
+                foreach ($_FILES['sync_ads']['name'] as $k => $v) {
+                    $fn = time() . "_sync_" . basename($v);
+                    move_uploaded_file($_FILES['sync_ads']['tmp_name'][$k], "../uploads/" . $fn);
+                    mysqli_query($conn, "INSERT INTO assets (schedule_id, platform, file_name) VALUES ($schedule_id, 'global', '$fn')");
+                }
+            }
+        } else {
+            // --- UPDATED CUSTOM LOGIC ---
+            foreach ($platforms as $p) {
+                // We sanitize the platform name for the POST key (e.g., format_Facebook)
+                $p_key = str_replace(' ', '_', $p); 
+                $format = $_POST["format_$p_key"] ?? 'Reels (9:16)';
+                $qty    = $_POST["qty_$p_key"] ?? 1;
+                $inst   = mysqli_real_escape_string($conn, $_POST["inst_$p_key"] ?? '');
+                
+                mysqli_query($conn, "INSERT INTO schedule_details (schedule_id, platform, format, ad_quantity, instructions) 
+                                     VALUES ($schedule_id, '$p', '$format', '$qty', '$inst')");
+
+                if (!empty($_FILES["ads_$p_key"]['name'][0])) {
+                    foreach ($_FILES["ads_$p_key"]['name'] as $k => $v) {
+                        $fn = time() . "_".$p_key."_" . basename($v);
+                        move_uploaded_file($_FILES["ads_$p_key"]['tmp_name'][$k], "../uploads/" . $fn);
+                        mysqli_query($conn, "INSERT INTO assets (schedule_id, platform, file_name) VALUES ($schedule_id, '$p', '$fn')");
+                    }
                 }
             }
         }
+        $status_msg = "<div class='alert alert-success border-0 shadow-sm'>🚀 Schedule Dispatched Successfully!</div>";
     }
-    echo "<script>alert('Schedule Dispatched Successfully!'); window.location.href='create.php';</script>";
 }
 ?>
 
-<div class="main-card shadow-sm border-0">
-    <div class="card-header-dark">
-        <h5 class="mb-0 fw-bold">SWARNAVAHINI | CONTENT SCHEDULER</h5>
+<div class="main-card shadow-sm border-0 mb-5">
+    <div class="card-header-dark p-4">
+        <h5 class="mb-0 fw-bold">SWARNAVAHINI | CAMPAIGN SCHEDULER</h5>
     </div>
 
-    <form action="create.php" method="POST" enctype="multipart/form-data" class="p-4 p-md-5">
-        
-        <h6 class="section-title">1. Global Campaign Details</h6>
+    <form action="create.php" method="POST" enctype="multipart/form-data" class="p-4 p-md-5 bg-white rounded-bottom">
+        <?php echo $status_msg; ?>
+
+        <h6 class="section-title text-uppercase small fw-bold text-muted">1. Global Campaign Details</h6>
+        <div class="row g-4 mb-5">
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">Campaign Name</label>
+                <input type="text" name="campaign_title" class="form-control" placeholder="Unilever Campaign" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">Schedule Duration (Date Range)</label>
+                <input type="text" name="schedule_duration" id="schedule_duration" class="form-control" placeholder="Select Date Range.." required autocomplete="off">
+            </div>
+        </div>
+
+        <h6 class="section-title text-uppercase small fw-bold text-muted">2. Target Platforms & Sync Logic</h6>
+        <div class="mb-4">
+            <div class="d-flex gap-2 mb-3">
+                <?php $plats = ['Facebook', 'TikTok', 'Youtube', 'Instagram']; 
+                foreach($plats as $pt): ?>
+                    <input type="checkbox" class="btn-check platform-check" name="platforms[]" value="<?php echo $pt; ?>" id="btn-<?php echo $pt; ?>">
+                    <label class="btn btn-outline-primary rounded-pill px-4 btn-sm" for="btn-<?php echo $pt; ?>">✓ <?php echo $pt; ?></label>
+                <?php endforeach; ?>
+            </div>
+            
+            <div class="form-check form-switch p-3 bg-light rounded-3 border d-inline-block w-100">
+                <input class="form-check-input ms-0 me-2" type="checkbox" name="custom_mode" id="modeSwitch">
+                <label class="form-check-label fw-bold" for="modeSwitch">Custom Mode (Individual Settings)</label>
+            </div>
+        </div>
+
+        <div id="sync-container">
+            <div class="card border-success border-2 mb-4">
+                <div class="card-header bg-success text-white fw-bold py-2">Main Content (Global)</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label small fw-bold">Format</label>
+                            <select name="sync_format" class="form-select"><option>Reels (9:16)</option><option>Standard Video (16:9)</option></select>
+                        </div>
+                        <div class="col-md-6"><label class="form-label small fw-bold">Ad quantity</label>
+                            <input type="number" name="sync_qty" class="form-control" value="2">
+                        </div>
+                        <div class="col-12"><label class="form-label small fw-bold">Upload Ads Pool [+]</label>
+                            <input type="file" name="sync_ads[]" class="form-control" multiple>
+                        </div>
+                        <div class="col-12"><textarea name="sync_instructions" class="form-control bg-light" placeholder="Global Instructions"></textarea></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="custom-container" class="d-none">
+            <h6 class="small fw-bold text-primary mb-3">Platform Specific Settings</h6>
+            <div id="custom-boxes">
+                <p class="text-muted small">Please select platforms above to see custom settings.</p>
+            </div>
+        </div>
+
+        <h6 class="section-title text-uppercase small fw-bold text-muted mt-5">4. Notification Recipients</h6>
         <div class="row g-3 mb-4">
-            <div class="col-md-7">
-                <input type="text" name="title" class="form-control py-2" placeholder="Campaign Title (e.g. Teledrama Ep 45)" required>
+            <div class="col-md-6">
+                <div class="border p-3 rounded bg-light">
+                    <input type="checkbox" name="recipients[]" value="Content Production" id="rp1" checked>
+                    <label class="fw-bold ms-2" for="rp1">Content Production</label>
+                </div>
             </div>
-            <div class="col-md-3">
-                <select name="category" class="form-select py-2">
-                    <option value="Drama">Drama</option>
-                    <option value="News">News</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <input type="date" name="schedule_date" class="form-control py-2" required>
-            </div>
-        </div>
-
-        <h6 class="section-title">2. Target Platforms & Logic</h6>
-        <div class="d-flex align-items-center gap-3 mb-3">
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="checkbox" name="platforms[]" value="Facebook" id="pltFB">
-                <label class="form-check-label fw-bold" for="pltFB">Facebook</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="checkbox" name="platforms[]" value="TikTok" id="pltTT">
-                <label class="form-check-label fw-bold" for="pltTT">TikTok</label>
-            </div>
-        </div>
-
-        <div class="alert alert-info d-flex justify-content-between align-items-center py-2 rounded-3 border-0">
-            <span class="fw-bold"><i class="bi bi-arrow-repeat"></i> Sync Mode Active</span>
-            <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" name="sync_mode" value="custom" id="modeToggle">
-                <label class="form-check-label small" for="modeToggle">Switch to Custom Mode</label>
-            </div>
-        </div>
-
-        <div id="sync-view">
-            <h6 class="section-title">3. Synced Content (Main Version)</h6>
-            <div class="content-card card-sync p-4 border">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Format</label>
-                        <select name="sync_format" class="form-select">
-                            <option>Reel (9:16)</option>
-                            <option>Video (16:9)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Upload Ads Pool [+]</label>
-                        <input type="file" name="sync_ads[]" class="form-control" multiple>
-                    </div>
-                    <div class="col-12">
-                        <textarea name="sync_instructions" class="form-control" placeholder="Instructions for editors..."></textarea>
-                    </div>
+            <div class="col-md-6">
+                <div class="border p-3 rounded bg-light">
+                    <input type="checkbox" name="recipients[]" value="News Editorial" id="rp2">
+                    <label class="fw-bold ms-2" for="rp2">News Editorial</label>
                 </div>
             </div>
         </div>
 
-        <div id="custom-view" class="d-none">
-            <h6 class="section-title">3. Custom Content per Platform</h6>
-            <div class="content-card card-fb p-4 border mb-3">
-                <p class="fw-bold text-primary mb-2">FACEBOOK VERSION</p>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <select name="format_Facebook" class="form-select"><option>Reel (9:16)</option></select>
-                    </div>
-                    <div class="col-md-6">
-                        <input type="file" name="ads_Facebook[]" class="form-control" multiple>
-                    </div>
-                    <div class="col-12">
-                        <textarea name="inst_Facebook" class="form-control" placeholder="FB Instructions..."></textarea>
-                    </div>
-                </div>
-            </div>
-            <div class="content-card card-tiktok p-4 border">
-                <p class="fw-bold text-warning mb-2">TIKTOK VERSION</p>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <select name="format_TikTok" class="form-select"><option>TikTok Video</option></select>
-                    </div>
-                    <div class="col-md-6">
-                        <input type="file" name="ads_TikTok[]" class="form-control" multiple>
-                    </div>
-                    <div class="col-12">
-                        <textarea name="inst_TikTok" class="form-control" placeholder="TikTok Instructions..."></textarea>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <button type="submit" name="dispatch_schedule" class="btn btn-dispatch w-100 mt-4">DISPATCH SCHEDULE</button>
+        <button type="submit" name="dispatch_schedule" class="btn btn-success w-100 py-3 mt-4 rounded-3 shadow">
+            <div class="h5 mb-0 fw-bold">DISPATCH SCHEDULE</div>
+        </button>
     </form>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
-document.getElementById('modeToggle').addEventListener('change', function() {
-    const syncView = document.getElementById('sync-view');
-    const customView = document.getElementById('custom-view');
-    if(this.checked) {
-        syncView.classList.add('d-none');
-        customView.classList.remove('d-none');
-    } else {
-        syncView.classList.remove('d-none');
-        customView.classList.add('d-none');
-    }
+flatpickr("#schedule_duration", { mode: "range", dateFormat: "Y-m-d", minDate: "today" });
+
+const modeSwitch = document.getElementById('modeSwitch');
+const platformChecks = document.querySelectorAll('.platform-check');
+const customBoxes = document.getElementById('custom-boxes');
+
+// Function to generate Custom Platform Boxes
+function updateCustomUI() {
+    customBoxes.innerHTML = '';
+    let selected = false;
+    
+    platformChecks.forEach(check => {
+        if(check.checked) {
+            selected = true;
+            const p = check.value;
+            const pKey = p.replace(' ', '_');
+            const color = p === 'Facebook' ? 'primary' : (p === 'TikTok' ? 'dark' : (p === 'Youtube' ? 'danger' : 'warning'));
+            
+            customBoxes.innerHTML += `
+                <div class="card border-${color} mb-3 shadow-sm">
+                    <div class="card-header bg-${color} text-white fw-bold py-1 small">${p} Specific</div>
+                    <div class="card-body">
+                        <div class="row g-2">
+                            <div class="col-md-6"><label class="small fw-bold">Format</label>
+                                <select name="format_${pKey}" class="form-select form-select-sm"><option>Reels (9:16)</option><option>Standard (16:9)</option></select>
+                            </div>
+                            <div class="col-md-6"><label class="small fw-bold">Ad Qty</label>
+                                <input type="number" name="qty_${pKey}" class="form-control form-select-sm" value="1">
+                            </div>
+                            <div class="col-12"><input type="file" name="ads_${pKey}[]" class="form-control form-select-sm" multiple></div>
+                            <div class="col-12"><textarea name="inst_${pKey}" class="form-control form-select-sm" placeholder="Specific instructions for ${p}"></textarea></div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+    });
+    if(!selected) customBoxes.innerHTML = '<p class="text-muted small">Please select platforms above.</p>';
+}
+
+modeSwitch.addEventListener('change', function() {
+    document.getElementById('sync-container').classList.toggle('d-none', this.checked);
+    document.getElementById('custom-container').classList.toggle('d-none', !this.checked);
+    if(this.checked) updateCustomUI();
 });
+
+platformChecks.forEach(check => check.addEventListener('change', () => { if(modeSwitch.checked) updateCustomUI(); }));
+
 </script>
 
 <?php include_once('../includes/footer.php'); ?>
