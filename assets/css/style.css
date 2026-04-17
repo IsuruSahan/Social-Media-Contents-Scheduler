@@ -1,0 +1,125 @@
+/* Swarnavahini Project Global Styles */
+
+:root {
+    --swarna-dark: #1E293B;      /* Slate 900 */
+    --swarna-border: #E2E8F0;    /* Slate 200 */
+    --swarna-bg: #F8FAFC;        /* Slate 50 */
+    --swarna-text-muted: #64748B;/* Slate 500 */
+    
+    /* Logic Colors */
+    --swarna-sync: #10B981;      /* Emerald 500 (Green) */
+    --swarna-fb: #3B82F6;        /* Blue 500 (Blue) */
+    --swarna-tiktok: #F59E0B;    /* Amber 500 (Orange) */
+}
+
+body {
+    background-color: var(--swarna-bg);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--swarna-dark);
+}
+
+/* 1. Main Dashboard Card */
+.main-card {
+    background: white;
+    border: 1px solid var(--swarna-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin-top: 2rem;
+    margin-bottom: 3rem;
+}
+
+/* 2. Header Styles */
+.card-header-dark {
+    background-color: var(--swarna-dark);
+    color: white;
+    padding: 1.5rem;
+    border: none;
+}
+
+.section-title {
+    color: var(--swarna-text-muted);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    margin-bottom: 1rem;
+    margin-top: 1.5rem;
+}
+
+/* 3. Platform Card Styles (Group 3 & 4) */
+.content-card {
+    border-radius: 10px;
+    border-width: 2px;
+    margin-bottom: 1.5rem;
+    background: white;
+}
+
+.card-sync { border-color: var(--swarna-sync); }
+.card-fb   { border-color: var(--swarna-fb); }
+.card-tiktok { border-color: var(--swarna-tiktok); }
+
+.card-header-sync { background-color: var(--swarna-sync); color: white; padding: 10px 15px; font-size: 11px; font-weight: bold; }
+.card-header-fb   { background-color: var(--swarna-fb); color: white; padding: 10px 15px; font-size: 11px; font-weight: bold; }
+.card-header-tiktok { background-color: var(--swarna-tiktok); color: white; padding: 10px 15px; font-size: 11px; font-weight: bold; }
+
+/* 4. Ad Placement Checklist (Pills) */
+.placement-pill {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: 8px;
+    border: 1px solid transparent;
+}
+
+.pill-sync { background-color: #F0FDF4; color: #166534; border-color: #BBF7D0; }
+.pill-fb   { background-color: #EFF6FF; color: #1E40AF; border-color: #DBEAFE; }
+.pill-tiktok { background-color: #FFF7ED; color: #9A3412; border-color: #FED7AA; }
+
+/* 5. Role Badges (Admin View) */
+.badge-role {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 5px 12px;
+    border-radius: 12px;
+}
+
+.badge-editor { background-color: #F3E8FF; color: #6B21A8; }
+.badge-scheduler { background-color: #DBEAFE; color: #1E40AF; }
+
+/* 6. Form Styling */
+.form-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--swarna-dark);
+}
+
+.form-control, .form-select {
+    border: 1px solid #CBD5E1;
+    padding: 0.6rem 0.8rem;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    border-color: var(--swarna-fb);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* 7. Action Buttons */
+.btn-dispatch {
+    background-color: var(--swarna-sync);
+    color: white;
+    font-weight: 700;
+    padding: 1rem;
+    border-radius: 12px;
+    border: none;
+    transition: transform 0.1s;
+}
+
+.btn-dispatch:hover {
+    background-color: #059669;
+    color: white;
+    transform: translateY(-1px);
+}
