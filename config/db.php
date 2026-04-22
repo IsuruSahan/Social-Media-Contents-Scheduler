@@ -2,7 +2,7 @@
 session_start();
 
 // Change 'swarnavahini' to your folder name if it's different
-$directory = "swarnavahini"; 
+$directory = "Social-Media-Contents-Scheduler"; 
 
 $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
 $base_url = $protocol . "://" . $_SERVER['HTTP_HOST'] . "/" . $directory . "/"; 

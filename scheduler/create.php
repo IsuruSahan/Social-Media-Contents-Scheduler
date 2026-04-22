@@ -70,7 +70,7 @@ if (isset($_POST['dispatch_schedule'])) {
 
 <div class="main-card shadow-sm border-0 mb-5">
     <div class="card-header-dark p-4">
-        <h5 class="mb-0 fw-bold">SWARNAVAHINI | CAMPAIGN SCHEDULER</h5>
+        <h5 class="mb-0 fw-bold">CAMPAIGN SCHEDULER</h5>
     </div>
 
     <form action="create.php" method="POST" enctype="multipart/form-data" class="p-4 p-md-5 bg-white rounded-bottom">
