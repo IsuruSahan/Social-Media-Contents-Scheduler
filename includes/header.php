@@ -44,7 +44,7 @@ include_once(dirname(__DIR__) . '/config/db.php');
                     <a class="nav-link px-3" href="<?php echo BASE_URL; ?>admin/users.php">Staff Management</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link px-3" href="<?php echo BASE_URL; ?>scheduler/create.php">New Dispatch</a>
+                    <a class="nav-link px-3" href="<?php echo BASE_URL; ?>scheduler/create.php">New Campaign</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link px-3" href="<?php echo BASE_URL; ?>editor/dashboard.php">Editor Tasks</a>

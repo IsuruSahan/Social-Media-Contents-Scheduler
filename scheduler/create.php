@@ -146,7 +146,7 @@ if (isset($_POST['dispatch_schedule'])) {
         </div>
 
         <button type="submit" name="dispatch_schedule" class="btn btn-primary w-100 py-3 mt-4 rounded-3 shadow fw-bold h5">
-            DISPATCH SCHEDULE
+            CREATE CAMPAIGN
         </button>
     </form>
 </div>
